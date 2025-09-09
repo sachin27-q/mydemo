@@ -1,0 +1,47 @@
+name: CI/CD Build & Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: "448.0.0"
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: demo1-471009
+
+      - name: Configure Docker for gcr
+        run: |
+          gcloud auth configure-docker --quiet
+
+      - name: Build Docker image
+        run: |
+          IMAGE=gcr.io/demo1-471009/demo-api:${{ github.sha }}
+          docker build -t $IMAGE ./app
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials demo1-gke --zone us-central1-a --project demo1-471009
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          # create secret for service account key to allow cloud-sql-proxy to use it
+          kubectl -n demo create secret generic gcp-sa-key --from-literal=key="$(echo "$GCP_SA_KEY")" || true
+          sed -e "s|gcr.io/demo1-471009/demo-api:latest|${IMAGE}|g" k8s/app-deployment.yaml | kubectl -n demo apply -f -
+          kubectl -n demo apply -f k8s/app-service.yaml
+          kubectl -n demo apply -f k8s/nginx-proxy.yaml
+          kubectl -n demo apply -f k8s/nginx-service.yaml
+          kubectl -n demo apply -f k8s/swagger-ui.yaml
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}

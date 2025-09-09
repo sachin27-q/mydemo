@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-api
+  template:
+    metadata:
+      labels:
+        app: demo-api
+    spec:
+      containers:
+        - name: demo-api
+          image: gcr.io/demo1-471009/demo-api:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: cloudsql-secrets
+        # Cloud SQL Auth Proxy sidecar (quick method)
+        - name: cloud-sql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.33.3
+          command:
+            - "/cloud_sql_proxy"
+            - "-instances=demo1-471009:us-central1:demo1-postgres=tcp:5432"
+            - "-credential_file=/secrets/key.json"
+          volumeMounts:
+            - name: gcp-sa
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: gcp-sa
+          secret:
+            secretName: gcp-sa-key

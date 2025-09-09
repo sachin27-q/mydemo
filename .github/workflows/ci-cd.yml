@@ -27,11 +27,17 @@ jobs:
         run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
       # Build Docker image
+      #- name: Build image
+       # run: |
+        #  IMAGE=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/demo1-docker/demo-api:${{ github.sha }}
+         # docker build -t $IMAGE ./app
+         # echo "IMAGE=$IMAGE" >> $GITHUB_ENV
       - name: Build image
         run: |
-          IMAGE=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/demo1-docker/demo-api:${{ github.sha }}
+          IMAGE=us-central1-docker.pkg.dev/demo1-471009/demo1-docker/demo-api:${{ github.sha }}
           docker build -t $IMAGE ./app
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
 
       # Push Docker image
       - name: Push image

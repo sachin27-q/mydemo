@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api-deployment
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-api
+  template:
+    metadata:
+      labels:
+        app: demo-api
+    spec:
+      containers:
+      - name: demo-api
+        image: us-central1-docker.pkg.dev/demo1-471009/demo1-docker/demo-api:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: cloudsql-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-api-service
+  namespace: demo
+spec:
+  type: LoadBalancer
+  selector:
+    app: demo-api
+  ports:
+    - port: 80
+      targetPort: 8080
